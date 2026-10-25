@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Penghitung peluang saham</title>
+<style>
+:root{
+  color-scheme: light dark;
+  --bg:#eef2f3; --surface:#fbfcfc; --ink:#14262c; --muted:#56676e; --rule:#cbd7da;
+  --accent:#0e5c63; --up:#16794f; --upbg:#dcefe5; --down:#b5362f; --downbg:#f6dfdc;
+  --wait:#80590c; --waitbg:#f3e9cf; --field:#ffffff;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0e191d; --surface:#152429; --ink:#e3edef; --muted:#97aab0; --rule:#2a3d43;
+    --accent:#58b8c0; --up:#4fc08a; --upbg:#14352a; --down:#ec7d75; --downbg:#3b1d1b;
+    --wait:#e0b44f; --waitbg:#352b12; --field:#101d21;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:640px;margin:0 auto;padding:20px 16px 56px}
+h1{font:700 26px/1.2 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;margin:4px 0 6px}
+h2{font:700 19px/1.25 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;margin:0 0 2px}
+.lead{margin:0 0 18px;color:var(--muted)}
+.note{margin:2px 0 10px;color:var(--muted);font-size:14px}
+section{padding:18px 0;border-top:1px solid var(--rule)}
+label{display:block;font-weight:600;font-size:14px;margin:0 0 4px}
+textarea,input,select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--field);border:1px solid var(--rule);border-radius:6px;padding:10px 12px}
+textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;min-height:150px;resize:vertical}
+textarea:focus,input:focus,select:focus,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:14px 0}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+button{font:inherit;font-weight:600;border-radius:6px;padding:11px 18px;border:1px solid var(--accent);cursor:pointer;background:transparent;color:var(--accent)}
+button.primary{background:var(--accent);color:var(--bg)}
+.msg{margin:12px 0 0;padding:10px 12px;border-radius:6px;font-size:14px}
+.msg.err{background:var(--downbg);color:var(--down)}
+.msg.warn{background:var(--waitbg);color:var(--wait)}
+.verdict{margin:0 -16px;padding:22px 16px 20px;border-left:8px solid var(--wait);background:var(--waitbg)}
+.verdict.beli{border-color:var(--up);background:var(--upbg)}
+.verdict.jual{border-color:var(--down);background:var(--downbg)}
+.verdict .word{font:700 clamp(46px,15vw,76px)/1 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;margin:0}
+.verdict.beli .word{color:var(--up)} .verdict.jual .word{color:var(--down)} .verdict.tunggu .word{color:var(--wait)}
+.verdict .sub{margin:6px 0 14px;font-weight:600}
+.verdict ul{margin:12px 0 0;padding-left:20px}
+.verdict li{margin:4px 0}
+.gauge{position:relative;height:12px;border-radius:6px;margin:16px 0 4px;background:linear-gradient(90deg,var(--down) 0 37.5%,var(--wait) 37.5% 62.5%,var(--up) 62.5% 100%);opacity:.85}
+.gauge i{position:absolute;top:-5px;width:4px;height:22px;background:var(--ink);border-radius:2px;transform:translateX(-2px)}
+.gl{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.row{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-bottom:1px solid var(--rule)}
+.row:last-child{border-bottom:0}
+.row .k{color:var(--muted)}
+.row .v{font-weight:600;text-align:right}
+.up{color:var(--up)} .down{color:var(--down)} .wait{color:var(--wait)}
+.read{margin:10px 0 0;font-size:14px}
+canvas{width:100%;height:220px;display:block;margin-top:8px}
+.legend{font-size:13px;color:var(--muted);margin-top:6px}
+details{margin-top:6px}
+summary{cursor:pointer;font-weight:600;padding:6px 0}
+.formula{margin:10px 0;padding:10px 12px;background:var(--surface);border:1px solid var(--rule);border-radius:6px;overflow-x:auto;font-size:15px}
+.frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;text-align:center;margin:0 .3em}
+.frac span:first-child{border-bottom:1px solid currentColor;padding:0 .35em 2px}
+.frac span:last-child{padding:2px .35em 0}
+.foot{font-size:13px;color:var(--muted)}
+.seg{display:flex;gap:0;margin:0 0 16px;border:1px solid var(--accent);border-radius:6px;overflow:hidden}
+.seg button{flex:1;border:0;border-radius:0;background:transparent;color:var(--accent);padding:11px 8px;font-size:15px}
+.seg button.on{background:var(--accent);color:var(--bg)}
+.zone{margin:14px 0 4px}
+.zone .zl{display:block;font-size:14px;font-weight:600}
+.zone .zv{display:block;font:700 clamp(26px,8vw,38px)/1.15 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;margin:2px 0}
+.zone .zs{display:block;font-size:15px}
+.map .row.now{background:var(--waitbg);margin:0 -8px;padding:8px;border-radius:4px}
+.map .row.zn .v{color:var(--up)}
+.gridwrap{overflow:auto;max-height:340px;border:1px solid var(--rule);border-radius:6px;background:var(--field)}
+table.entry{border-collapse:collapse;width:100%;min-width:560px}
+.entry th{position:sticky;top:0;background:var(--surface);font-size:13px;text-align:left;padding:8px 6px;border-bottom:1px solid var(--rule);color:var(--muted)}
+.entry td{padding:0;border-bottom:1px solid var(--rule)}
+.entry td+td{border-left:1px solid var(--rule)}
+.entry input{border:0;border-radius:0;padding:10px 6px;font-size:15px;width:100%;min-width:64px;background:transparent}
+.entry input:focus{outline-offset:-2px}
+.entry .no{color:var(--muted);font-size:12px;padding:0 8px;width:34px;text-align:center}
+fieldset{border:1px solid var(--rule);border-radius:6px;margin:14px 0;padding:2px 12px 12px;min-width:0}
+legend{font-weight:700;font-size:14px;padding:0 6px}
+fieldset .grid{margin:8px 0 0}
+.kpi{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:6px;overflow:hidden;margin:16px 0}
+.kpi>div{background:var(--surface);padding:12px}
+.kk{display:block;font-size:13px;color:var(--muted)}
+.kv{display:block;font-size:20px;font-weight:700;margin-top:2px}
+table.cmp{width:100%;border-collapse:collapse;margin-top:6px}
+.cmp th{font-size:13px;color:var(--muted);font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid var(--rule)}
+.cmp td{padding:8px 0;border-bottom:1px solid var(--rule)}
+.cmp td+td{text-align:right;font-weight:600}
+.cmp tr:last-child td{border-bottom:0}
+.fh{margin:0 0 8px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Penghitung peluang saham</h1>
+  <p class="lead">Isi data harga, lihat peluang beli atau jual.</p>
+</header>
+
+<section id="form" style="border-top:0;padding-top:0">
+  <div class="seg">
+    <button id="tabSwing" class="on" type="button" aria-pressed="true">Swing (beberapa hari)</button>
+    <button id="tabIntra" type="button" aria-pressed="false">Trading harian</button>
+  </div>
+
+  <div id="swingBox">
+    <h2 class="fh">Data harga harian</h2>
+    <div id="gSwing"></div>
+    <p class="note">Tempel banyak baris sekaligus, otomatis terisi. Minimal 60 hari.</p>
+  </div>
+
+  <div id="intraBox" class="hidden">
+    <fieldset><legend>Harga kemarin</legend>
+      <div class="grid">
+        <div><label for="pH">Tertinggi</label><input id="pH" inputmode="numeric"></div>
+        <div><label for="pL">Terendah</label><input id="pL" inputmode="numeric"></div>
+        <div><label for="pC">Tutup</label><input id="pC" inputmode="numeric"></div>
+      </div>
+    </fieldset>
+    <fieldset><legend>Harga hari ini</legend>
+      <div class="grid">
+        <div><label for="iO">Buka</label><input id="iO" inputmode="numeric"></div>
+        <div><label for="iH">Tertinggi</label><input id="iH" inputmode="numeric"></div>
+        <div><label for="iL">Terendah</label><input id="iL" inputmode="numeric"></div>
+        <div><label for="iNow">Harga sekarang</label><input id="iNow" inputmode="numeric"></div>
+        <div><label for="iJam">Jam sekarang (opsional)</label><input id="iJam" placeholder="10:35, kosong = jam HP"></div>
+        <div><label for="iHold">Rencana tahan (menit)</label><select id="iHold"><option>15</option><option selected>30</option><option>60</option></select></div>
+      </div>
+    </fieldset>
+    <details id="candleBox"><summary>Data candle (opsional, untuk uji statistik)</summary>
+      <div id="gIntra"></div>
+      <p class="note">Tanggal boleh kosong untuk satu hari. Idealnya 5 hari.</p>
+      <div class="grid"><div><label for="iInterval">Panjang candle (menit)</label><select id="iInterval"><option>1</option><option selected>5</option><option>15</option></select></div></div>
+    </details>
+  </div>
+
+  <fieldset><legend>Modal dan biaya</legend>
+    <div class="grid">
+      <div><label for="kode">Kode saham</label><input id="kode" placeholder="contoh: BBCA"></div>
+      <div><label for="modal">Modal (Rp)</label><input id="modal" inputmode="numeric" value="10000000"></div>
+      <div><label for="risiko">Risiko per transaksi (%)</label><input id="risiko" inputmode="decimal" value="1"></div>
+      <div><label for="feeBeli">Biaya beli (%)</label><input id="feeBeli" inputmode="decimal" value="0.15"></div>
+      <div><label for="feeJual">Biaya jual (%)</label><input id="feeJual" inputmode="decimal" value="0.25"></div>
+      <div><label for="alpha">Taraf signifikansi</label>
+        <select id="alpha"><option value="0.05" selected>5% (ketat)</option><option value="0.10">10% (longgar)</option></select></div>
+    </div>
+    <p class="note">Biaya sesuai sekuritasmu. Taraf 10% menaikkan alarm palsu.</p>
+  </fieldset>
+  <fieldset id="swingOpts"><legend>Pengaturan swing</legend>
+    <div class="grid">
+      <div><label for="hari">Lama tahan (hari bursa)</label>
+        <select id="hari"><option>3</option><option selected>5</option><option>10</option><option>20</option></select></div>
+      <div><label for="entry">Harga beli rencana</label><input id="entry" inputmode="numeric" placeholder="kosong = tutup terakhir"></div>
+      <div><label for="urutan">Urutan data</label>
+        <select id="urutan"><option value="auto" selected>Otomatis dari tanggal</option><option value="barubaris">Terbaru di atas</option><option value="lamabaris">Terlama di atas</option></select></div>
+    </div>
+  </fieldset>
+
+  <div class="btns">
+    <button class="primary" id="go" type="button">Hitung analisis</button>
+    <button id="demo" type="button">Isi data contoh</button>
+    <button id="clear" type="button">Kosongkan</button>
+  </div>
+  <div id="msg"></div>
+</section>
+
+<div id="out" class="hidden"></div>
+
+<p class="foot">Bukan saran investasi. Hasil tidak menjamin untung.</p>
+</main>
+
+<script>
+"use strict";
+/* ---------- util ---------- */
+const $ = id => document.getElementById(id);
+const nf = (x,d=0) => x.toLocaleString('id-ID',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pc = (x,d=1,sign=false) => (sign && x>0 ? '+' : '') + nf(x*100,d) + '%';
+const rp = x => (x<0?'-':'') + 'Rp ' + nf(Math.abs(Math.round(x)));
+const pf = p => p < 0.001 ? '< 0,001' : nf(p,3);
+const mean = a => a.reduce((s,x)=>s+x,0)/a.length;
+const sd = a => { if(a.length<2) return 0; const m=mean(a); return Math.sqrt(a.reduce((s,x)=>s+(x-m)*(x-m),0)/(a.length-1)); };
+const quantile = (a,q) => { const s=[...a].sort((x,y)=>x-y); const pos=(s.length-1)*q; const lo=Math.floor(pos), hi=Math.ceil(pos); return s[lo]+(s[hi]-s[lo])*(pos-lo); };
+
+/* ---------- uji t (p-value dua arah) ---------- */
+function lnGamma(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(let j=0;j<6;j++){y+=1;s+=c[j]/y;}return -t+Math.log(2.5066282746310005*s/x);}
+function betacf(a,b,x){const F=1e-300;let qab=a+b,qap=a+1,qam=a-1,c=1,d=1-qab*x/qap;if(Math.abs(d)<F)d=F;d=1/d;let h=d;for(let m=1;m<=200;m++){const m2=2*m;let aa=m*(b-m)*x/((qam+m2)*(a+m2));d=1+aa*d;if(Math.abs(d)<F)d=F;c=1+aa/c;if(Math.abs(c)<F)c=F;d=1/d;h*=d*c;aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));d=1+aa*d;if(Math.abs(d)<F)d=F;c=1+aa/c;if(Math.abs(c)<F)c=F;d=1/d;const del=d*c;h*=del;if(Math.abs(del-1)<3e-12)break;}return h;}
+function betai(a,b,x){if(x<=0)return 0;if(x>=1)return 1;const bt=Math.exp(lnGamma(a+b)-lnGamma(a)-lnGamma(b)+a*Math.log(x)+b*Math.log(1-x));return x<(a+1)/(a+b+2)?bt*betacf(a,b,x)/a:1-bt*betacf(b,a,1-x)/b;}
+function tTest(mu, s, nEff){ // uji rata-rata = 0
+  if(nEff<3) return {t:NaN,p:NaN,df:nEff-1};
+  if(s===0) return {t:mu===0?0:Infinity,p:mu===0?1:0,df:nEff-1};
+  const t = mu/(s/Math.sqrt(nEff)); const df = nEff-1;
+  return {t, p: betai(df/2,0.5,df/(df+t*t)), df};
+}
+
+/* ---------- parsing ---------- */
+const BULAN={jan:0,januari:0,feb:1,februari:1,mar:2,maret:2,apr:3,april:3,mei:4,may:4,jun:5,juni:5,jul:6,juli:6,agu:7,agt:7,agus:7,agustus:7,aug:7,august:7,sep:8,sept:8,september:8,okt:9,oktober:9,oct:9,october:9,nov:10,november:10,des:11,desember:11,dec:11,december:11};
+function parseDate(s){
+  s=s.trim(); let m,d=null;
+  if((m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/))) d=new Date(+m[1],+m[2]-1,+m[3]);
+  else if((m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})$/))){let y=+m[3];if(y<100)y+=2000;d=new Date(y,+m[2]-1,+m[1]);}
+  else if((m=s.match(/^(\d{1,2})[\s-]+([A-Za-z]+)[\s,-]+(\d{2,4})$/))){const mo=BULAN[m[2].toLowerCase()];if(mo!=null){let y=+m[3];if(y<100)y+=2000;d=new Date(y,mo,+m[1]);}}
+  return d && !isNaN(d) ? d : null;
+}
+function parseNum(s){
+  if(s==null) return NaN;
+  s=String(s).trim().replace(/^rp/i,'').replace(/\s/g,'');
+  if(!s) return NaN;
+  let mult=1; const m=s.match(/(jt|rb|[kmbt])$/i);
+  if(m){ const u=m[1].toLowerCase(); mult={k:1e3,rb:1e3,m:1e6,jt:1e6,b:1e9,t:1e12}[u]; s=s.slice(0,-m[0].length); }
+  const hasC=s.includes(','), hasD=s.includes('.');
+  if(hasC&&hasD){ if(s.lastIndexOf(',')>s.lastIndexOf('.')) s=s.replace(/\./g,'').replace(',','.'); else s=s.replace(/,/g,''); }
+  else if(hasC){ s=/^\d{1,3}(,\d{3})+$/.test(s)?s.replace(/,/g,''):s.replace(',','.'); }
+  else if(hasD){ if(/^\d{1,3}(\.\d{3})+$/.test(s)) s=s.replace(/\./g,''); }
+  if(!/^-?\d+(\.\d+)?$/.test(s)) return NaN;
+  return Number(s)*mult;
+}
+function splitLine(line){
+  line=line.trim(); if(!line) return null;
+  if(line.includes('\t')) return line.split('\t').map(t=>t.trim()).filter(t=>t!=='');
+  if(line.includes(';')) return line.split(';').map(t=>t.trim()).filter(t=>t!=='');
+  const cs=line.split(',').map(t=>t.trim());
+  if(cs.length===5||cs.length===6) return cs;
+  return line.split(/\s+/);
+}
+function parseData(text, order){
+  const rows=[]; let skipped=0, odd=0;
+  for(const line of text.split(/\r?\n/)){
+    const tok=splitLine(line); if(!tok) continue;
+    let d=null, nums=tok;
+    if(tok.length>=8){ const dd=parseDate(tok.slice(0,3).join(' ')); if(dd){d=dd;nums=tok.slice(3);} }
+    if(!d){ const dd=parseDate(tok[0]); if(dd && tok.length>=6){d=dd;nums=tok.slice(1);} }
+    const v=nums.slice(0,5).map(parseNum);
+    if(v.length<5 || v.some(x=>!isFinite(x)) || v.slice(0,4).some(x=>x<=0) || v[4]<0){ skipped++; continue; }
+    const [o,h,l,c,vol]=v;
+    if(h<Math.max(o,c)*0.999 || l>Math.min(o,c)*1.001 || h<l) odd++;
+    rows.push({d,o,h,l,c,v:vol});
+  }
+  const withDate=rows.filter(r=>r.d).length;
+  let note='';
+  if(rows.length && withDate>=rows.length*0.9){
+    const seen=new Set(); const uniq=[];
+    rows.filter(r=>r.d).sort((a,b)=>a.d-b.d).forEach(r=>{const k=+r.d; if(!seen.has(k)){seen.add(k);uniq.push(r);}});
+    return {rows:uniq,skipped,odd,note};
+  }
+  if(order==='barubaris') rows.reverse();
+  else if(order==='auto') note='Tanggal tidak terbaca, jadi urutan dianggap terlama di atas. Ubah pilihan "Urutan data" kalau terbalik.';
+  return {rows,skipped,odd,note};
+}
+
+/* ---------- indikator ---------- */
+function smaArr(a,n){const o=Array(a.length).fill(null);let s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=n)s-=a[i-n];if(i>=n-1)o[i]=s/n;}return o;}
+function emaArr(a,n){const o=Array(a.length).fill(null),k=2/(n+1);let prev=null,cnt=0,sum=0;for(let i=0;i<a.length;i++){if(a[i]==null)continue;if(prev==null){cnt++;sum+=a[i];if(cnt===n){prev=sum/n;o[i]=prev;}}else{prev=a[i]*k+prev*(1-k);o[i]=prev;}}return o;}
+function rsiArr(c,n=14){const o=Array(c.length).fill(null);let g=0,l=0;for(let i=1;i<c.length;i++){const d=c[i]-c[i-1],up=Math.max(d,0),dn=Math.max(-d,0);if(i<=n){g+=up;l+=dn;if(i===n){g/=n;l/=n;o[i]=l===0?100:100-100/(1+g/l);}}else{g=(g*(n-1)+up)/n;l=(l*(n-1)+dn)/n;o[i]=l===0?100:100-100/(1+g/l);}}return o;}
+function atrAdx(h,l,c,n=14){
+  const N=c.length,atr=Array(N).fill(null),adx=Array(N).fill(null),pdi=Array(N).fill(null),mdi=Array(N).fill(null),dx=Array(N).fill(null);
+  const tr=[0],pdm=[0],mdm=[0];
+  for(let i=1;i<N;i++){const up=h[i]-h[i-1],dn=l[i-1]-l[i];tr.push(Math.max(h[i]-l[i],Math.abs(h[i]-c[i-1]),Math.abs(l[i]-c[i-1])));pdm.push(up>dn&&up>0?up:0);mdm.push(dn>up&&dn>0?dn:0);}
+  let sT=0,sP=0,sM=0;
+  for(let i=1;i<N;i++){
+    if(i<=n){sT+=tr[i];sP+=pdm[i];sM+=mdm[i];if(i===n)atr[i]=sT/n;}
+    else{sT=sT-sT/n+tr[i];sP=sP-sP/n+pdm[i];sM=sM-sM/n+mdm[i];atr[i]=sT/n;}
+    if(i>=n){pdi[i]=100*sP/sT;mdi[i]=100*sM/sT;const den=pdi[i]+mdi[i];dx[i]=den===0?0:100*Math.abs(pdi[i]-mdi[i])/den;}
+  }
+  let sum=0,cnt=0,prev=null;
+  for(let i=n;i<N;i++){if(prev==null){sum+=dx[i];cnt++;if(cnt===n){prev=sum/n;adx[i]=prev;}}else{prev=(prev*(n-1)+dx[i])/n;adx[i]=prev;}}
+  return {atr,adx,pdi,mdi};
+}
+
+/* ---------- analisis utama ---------- */
+function analyze(rows,cfg){
+  const n=rows.length, H=cfg.H, cost=(cfg.feeBeli+cfg.feeJual)/100;
+  const o=rows.map(r=>r.o),h=rows.map(r=>r.h),l=rows.map(r=>r.l),c=rows.map(r=>r.c),v=rows.map(r=>r.v);
+  const sma20=smaArr(c,20), sma50=smaArr(c,50);
+  const e12=emaArr(c,12), e26=emaArr(c,26);
+  const macd=c.map((_,i)=>e12[i]!=null&&e26[i]!=null?e12[i]-e26[i]:null);
+  const sig=emaArr(macd,9);
+  const hist=macd.map((m,i)=>m!=null&&sig[i]!=null?m-sig[i]:null);
+  const rsi=rsiArr(c,14);
+  const bbU=Array(n).fill(null), bbL=Array(n).fill(null);
+  for(let i=19;i<n;i++){const w=c.slice(i-19,i+1),m=sma20[i];const s=Math.sqrt(w.reduce((a,x)=>a+(x-m)*(x-m),0)/20);bbU[i]=m+2*s;bbL[i]=m-2*s;}
+  const {atr,adx,pdi,mdi}=atrAdx(h,l,c,14);
+  const obv=[0]; for(let i=1;i<n;i++) obv.push(obv[i-1]+Math.sign(c[i]-c[i-1])*v[i]);
+
+  function scoreAt(i){
+    if(i<50||hist[i]==null||hist[i-1]==null||rsi[i]==null||sma50[i]==null||bbU[i]==null) return null;
+    const trend=(c[i]>sma20[i]?1:-1)*0.4+(c[i]>sma50[i]?1:-1)*0.3+(sma20[i]>sma50[i]?1:-1)*0.3;
+    const rising=hist[i]>hist[i-1];
+    const mac=hist[i]>0?(rising?1:0.5):(rising?-0.5:-1);
+    const r=rsi[i], rs=r>=70?-0.5:(r<=30?0.5:(r-50)/40);
+    const pb=(c[i]-bbL[i])/((bbU[i]-bbL[i])||1), bo=pb<0.1?0.3:(pb>0.95?-0.3:0);
+    const ob=obv[i]>obv[i-10]?1:-1;
+    return 100*(0.30*trend+0.25*mac+0.15*rs+0.10*bo+0.20*ob);
+  }
+  const scores=c.map((_,i)=>scoreAt(i));
+  const bucket=s=>s>=25?'bull':(s<=-25?'bear':'netral');
+  const last=n-1, score=scores[last], bk=bucket(score);
+
+  /* peluang dari kondisi serupa */
+  const sample=[], all=[];
+  for(let i=50;i<=n-1-H;i++){
+    if(scores[i]==null) continue;
+    const r=c[i+H]/c[i]-1; all.push(r);
+    if(bucket(scores[i])===bk) sample.push(r);
+  }
+  const ns=sample.length, nEff=Math.max(2,Math.floor(ns/H));
+  let cond=null;
+  if(ns>=3){
+    const wins=sample.filter(r=>r>0), losses=sample.filter(r=>r<=0);
+    const pUp=wins.length/ns, pDn=losses.length/ns;
+    const avgWin=wins.length?mean(wins):0, avgLoss=losses.length?Math.abs(mean(losses)):0;
+    const m=mean(sample), s=sd(sample);
+    const evGross=pUp*avgWin-pDn*avgLoss, evNet=evGross-cost;
+    const test=tTest(m-cost,s,nEff);
+    cond={ns,nEff,pUp,pDn,avgWin,avgLoss,evGross,evNet,p:test.p,t:test.t,sig:test.p<cfg.alpha,base:all.length?mean(all):0};
+  }
+
+  /* durasi tren (harga di atas MA20) */
+  const st=[]; for(let i=19;i<n;i++) st.push(c[i]>sma20[i]);
+  const runs=[]; let cur={s:st[0],len:1};
+  for(let i=1;i<st.length;i++){ if(st[i]===cur.s) cur.len++; else {runs.push(cur);cur={s:st[i],len:1};} }
+  const doneSame=runs.slice(1).filter(r=>r.s===cur.s).map(r=>r.len);
+  const k=cur.len; let trend={up:cur.s,k,n:doneSame.length};
+  if(doneSame.length>=4){
+    trend.median=quantile(doneSame,0.5); trend.p75=quantile(doneSame,0.75);
+    const surv=doneSame.filter(x=>x>=k);
+    if(surv.length>=3){ trend.pCont=surv.filter(x=>x>k).length/surv.length; trend.remain=quantile(surv.map(x=>x-k),0.5); trend.survN=surv.length; }
+  }
+
+  /* keramaian */
+  const prevV=v.slice(Math.max(0,n-21),n-1), avgV=mean(prevV), sdV=sd(prevV);
+  const vr=avgV>0?v[last]/avgV:1, vz=sdV>0?(v[last]-avgV)/sdV:0;
+  const obvUp=obv[last]>obv[last-10];
+  const dayChg=c[last]/c[last-1]-1;
+
+  /* backtest aturan: beli saat skor >= 25, keluar saat skor <= 0, stop 2 ATR, atau tahan H hari */
+  function backtest(from,to){
+    const tr=[]; let pos=null;
+    for(let i=from;i<=to;i++){
+      let exited=false;
+      if(pos){
+        let ex=null;
+        if(l[i]<=pos.stop) ex=Math.min(o[i],pos.stop);
+        else if(i-pos.i>=H||(scores[i]!=null&&scores[i]<=0)) ex=c[i];
+        if(ex!=null){ tr.push(ex/pos.entry-1-cost); pos=null; exited=true; }
+      }
+      if(!pos&&!exited&&scores[i]!=null&&scores[i]>=25&&atr[i]!=null&&i<to) pos={i,entry:c[i],stop:c[i]-2*atr[i]};
+    }
+    if(pos) tr.push(c[to]/pos.entry-1-cost);
+    let eq=1,peak=1,dd=0; tr.forEach(r=>{eq*=1+r;peak=Math.max(peak,eq);dd=Math.min(dd,eq/peak-1);});
+    const mu=tr.length?mean(tr):0, tt=tTest(mu,sd(tr),tr.length);
+    return {n:tr.length,win:tr.length?tr.filter(r=>r>0).length/tr.length:0,mu,total:eq-1,dd,p:tt.p};
+  }
+  const split=50+Math.floor((n-50)*0.6);
+  const bt={train:backtest(50,split-1),test:backtest(split,n-1),split};
+
+  /* risiko dan ukuran posisi */
+  const entry=cfg.entry||c[last], atrL=atr[last];
+  const stop=entry-2*atrL, perShare=entry-stop, target=entry+2*perShare;
+  const riskAmt=cfg.modal*cfg.risiko/100;
+  let lots=Math.floor(riskAmt/(perShare*100));
+  const maxAfford=Math.floor(cfg.modal/(entry*100*(1+cfg.feeBeli/100)));
+  const capped=lots>maxAfford; lots=Math.max(0,Math.min(lots,maxAfford));
+  const posValue=lots*100*entry;
+  const feeIn=posValue*cfg.feeBeli/100;
+  const maxLoss=lots*100*perShare+feeIn+lots*100*stop*cfg.feeJual/100;
+  const gain=lots*100*(target-entry)-feeIn-lots*100*target*cfg.feeJual/100;
+  const sup=Math.min(...l.slice(-20)), res=Math.max(...h.slice(-20));
+
+  /* putusan akhir */
+  const adxL=adx[last], strong=adxL!=null&&adxL>=25;
+  const btOK=bt.test.n>=1&&bt.test.mu>0&&bt.train.mu>0;
+  let verdict='tunggu', pts=0; const why=[]; const warn=[];
+  if(bk==='bull'&&cond&&cond.evNet>0&&cond.sig){
+    verdict='beli';
+    pts=1+(btOK?1:0)+(strong&&trend.up?1:0)+(vr>=1?1:0)+(cond.nEff>=20?1:0);
+  } else if(bk==='bear'){
+    verdict='jual';
+    pts=(score<=-40?1:0)+(cond&&cond.evNet<0&&cond.sig?1:0)+(strong&&!trend.up?1:0)+(vr>=1?1:0)+(!obvUp?1:0);
+  }
+  const conf=pts>=4?'tinggi':(pts>=2?'sedang':'rendah');
+
+  const lab=bk==='bull'?'condong naik':bk==='bear'?'condong turun':'arah belum jelas';
+  why.push(`Skor teknikal ${nf(score,0)}: ${lab}.`);
+  if(cond){
+    if(cond.sig&&cond.evNet>0) why.push(`Statistik terbukti: hasil bersih ${pc(cond.evNet,2,true)} per ${H} hari (p ${pf(cond.p)}).`);
+    else if(cond.sig&&cond.evNet<0) why.push(`Statistik terbukti negatif: ${pc(cond.evNet,2,true)} per ${H} hari (p ${pf(cond.p)}).`);
+    else why.push(`Statistik belum terbukti (p ${pf(cond.p)}): bisa kebetulan.`);
+    if(cond.evNet<=0&&!(cond.sig&&cond.evNet<0)) why.push('Setelah biaya, expected value tidak positif.');
+  } else why.push('Kondisi serupa terlalu sedikit untuk dihitung.');
+  if(bt.test.n>=1) why.push(btOK?'Aturan juga untung di data latih dan uji.':'Aturan tidak konsisten untung di data uji.');
+  if(verdict==='tunggu'&&bk==='bull') why.push('Sinyal naik, tapi bukti statistik belum cukup.');
+
+  if(n<150) warn.push(`Data ${n} hari, di bawah 150: kurang andal.`);
+  if(cond&&cond.nEff<8) warn.push(`Sampel efektif ${cond.nEff}: uji statistik lemah.`);
+  if(bt.test.n<8) warn.push(`Backtest uji hanya ${bt.test.n} transaksi: jangan diandalkan.`);
+  if(cfg.alpha>0.05) warn.push('Taraf 10%: alarm palsu lebih sering.');
+  if(adxL!=null&&adxL<20) warn.push('Tren lemah: arah mudah berbalik.');
+
+  return {n,o,h,l,c,v,rows,sma20,sma50,rsi,hist,macd,sig,bbU,bbL,atr,adx,pdi,mdi,obv,score,bk,cond,trend,vr,vz,obvUp,dayChg,bt,
+    entry,stop,target,perShare,lots,capped,riskAmt,posValue,maxLoss,gain,sup,res,cost,verdict,conf,why,warn,H,cfg,last,adxL,strong};
+}
+
+/* ---------- tampilan ---------- */
+const row=(k,v,cls='')=>`<div class="row"><span class="k">${k}</span><span class="v ${cls}">${v}</span></div>`;
+let CUR=null;
+
+function render(A){
+  const {cfg,H,cond,trend:T,bt}=A;
+  const kode=cfg.kode?cfg.kode.toUpperCase():'saham ini';
+  const word={beli:'Beli',jual:'Jual atau hindari',tunggu:'Tunggu'}[A.verdict];
+  const sub={beli:`Keyakinan ${A.conf} untuk ${kode}`,jual:`Keyakinan ${A.conf} untuk ${kode}`,tunggu:`Belum ada keunggulan jelas untuk ${kode}`}[A.verdict];
+  let h=`<div class="verdict ${A.verdict}"><p class="word">${word}</p><p class="sub">${sub}</p>${gaugeHTML(A.score,25)}<ul>${A.why.map(x=>`<li>${x}</li>`).join('')}</ul></div>`;
+  h+=kpi([[`Peluang naik ${H} hari`,cond?pc(cond.pUp,0):'-',cond&&cond.pUp>0.5?'up':'down'],['Expected value bersih',cond?pc(cond.evNet,2,true):'-',cond&&cond.evNet>0?'up':'down'],['Stop loss',rp(A.stop),'down'],['Target',rp(A.target),'up']]);
+  h+=warnHTML(A.warn);
+
+  h+=`<section><h2>Peluang dan expected value</h2><p class="note">Kondisi serupa di masa lalu, hasil ${H} hari kemudian.</p>`;
+  if(cond){
+    h+=row('Peluang naik',pc(cond.pUp,0),cond.pUp>0.5?'up':'down');
+    h+=row('Rata-rata untung saat naik',pc(cond.avgWin,2,true),'up');
+    h+=row('Rata-rata rugi saat turun','-'+pc(cond.avgLoss,2),'down');
+    h+=row('Expected value sebelum biaya',pc(cond.evGross,2,true));
+    h+=row('Biaya beli dan jual',pc(A.cost,2));
+    h+=row('Expected value bersih',pc(cond.evNet,2,true)+' (≈ '+rp(cond.evNet*A.entry*100)+' per lot)',cond.evNet>0?'up':'down');
+    h+=row('Rata-rata semua hari (pembanding)',pc(cond.base,2,true));
+    h+=row('Jumlah kondisi serupa',`${cond.ns}, efektif ${cond.nEff}`);
+    h+=row('Uji statistik, taraf '+nf(cfg.alpha*100,0)+'%',cond.sig?`Terbukti, p ${pf(cond.p)}`:`Belum terbukti, p ${pf(cond.p)}`,cond.sig?'up':'wait');
+  } else h+=`<p class="read">Kondisi serupa terlalu sedikit.</p>`;
+  h+=`</section>`;
+
+  h+=`<section><h2>Tren dan lama bertahan</h2><p class="note">Tren dihitung dari harga terhadap MA20.</p>`;
+  h+=row('Arah tren',T.up?'Naik':'Turun',T.up?'up':'down');
+  h+=row('Sudah berjalan',`${T.k} hari bursa`);
+  h+=row('Kekuatan tren (ADX)',A.adxL==null?'-':`${nf(A.adxL,0)}, ${A.adxL>=25?'kuat':A.adxL>=20?'mulai terbentuk':'lemah'}`);
+  if(T.median!=null){
+    h+=row('Durasi tren sebelumnya',`median ${nf(T.median,0)} hari`);
+    if(T.pCont!=null){
+      h+=row('Peluang lanjut 1 hari lagi',pc(T.pCont,0)+` (dari ${T.survN} tren)`);
+      h+=row('Perkiraan sisa durasi',`${nf(T.remain,0)} hari`);
+    } else h+=row('Peluang lanjut','Tren sudah melewati rekor lama');
+  } else h+=row('Durasi tren sebelumnya','Data belum cukup');
+  h+=`</section>`;
+
+  const vl=A.vr>=1.5?'Ramai':(A.vr>=0.8?'Normal':'Sepi');
+  h+=`<section><h2>Keramaian transaksi</h2><p class="note">Volume hari ini dibanding rata-rata 20 hari.</p>`;
+  h+=row('Volume dibanding rata-rata',`${nf(A.vr,2)} kali, ${vl}`,A.vr>=1.5?'up':(A.vr<0.8?'wait':''));
+  h+=row('Aliran uang (OBV 10 hari)',A.obvUp?'Masuk':'Keluar',A.obvUp?'up':'down');
+  h+=row('Harga hari terakhir',pc(A.dayChg,2,true),A.dayChg>=0?'up':'down');
+  h+=`</section>`;
+
+  h+=`<section><h2>Risiko dan ukuran posisi</h2><p class="note">Stop 2 ATR, target dua kali jarak stop.</p>`;
+  h+=row('Harga beli rencana',rp(A.entry));
+  h+=row('Stop loss',`${rp(A.stop)} (${pc(-A.perShare/A.entry,1)})`,'down');
+  h+=row('Target',`${rp(A.target)} (${pc(2*A.perShare/A.entry,1,true)})`,'up');
+  h+=row('Support 20 hari',rp(A.sup));
+  h+=row('Resistance 20 hari',rp(A.res));
+  h+=row('Risiko maksimal',rp(A.riskAmt));
+  if(A.lots>=1){
+    h+=row('Jumlah lot',nf(A.lots)+(A.capped?' (dibatasi modal)':''));
+    h+=row('Nilai posisi',rp(A.posValue));
+    h+=row('Rugi bila kena stop',rp(-A.maxLoss),'down');
+    h+=row('Untung bila capai target',rp(A.gain),'up');
+  } else h+=`<p class="read">Modal atau risiko terlalu kecil untuk 1 lot.</p>`;
+  h+=`</section>`;
+
+  const col=b=>b.n?[b.n,pc(b.win,0),pc(b.mu,2,true),pc(b.dd,1),isNaN(b.p)?'-':pf(b.p)]:['0','-','-','-','-'];
+  const L=col(bt.train), U=col(bt.test), names=['Transaksi','Menang','Rata-rata bersih','Penurunan terdalam','Nilai p'];
+  h+=`<section><h2>Backtest aturan teknikal</h2><p class="note">Aturan diuji di data lama, setelah biaya.</p>
+    <table class="cmp"><thead><tr><th></th><th>Data latih</th><th>Data uji</th></tr></thead><tbody>${names.map((n,i)=>`<tr><td>${n}</td><td>${L[i]}</td><td>${U[i]}</td></tr>`).join('')}</tbody></table>
+    <p class="read">Data uji lebih jujur dari data latih.</p></section>`;
+
+  const i=A.last;
+  h+=`<section><h2>Indikator teknikal</h2>`;
+  h+=row('Harga tutup',rp(A.c[i]));
+  h+=row('MA20',rp(A.sma20[i]),A.c[i]>A.sma20[i]?'up':'down');
+  h+=row('MA50',A.sma50[i]!=null?rp(A.sma50[i]):'-',A.sma50[i]!=null&&A.c[i]>A.sma50[i]?'up':'down');
+  h+=row('RSI 14',nf(A.rsi[i],0)+(A.rsi[i]>=70?', jenuh beli':A.rsi[i]<=30?', jenuh jual':', netral'),A.rsi[i]>=70?'down':A.rsi[i]<=30?'up':'');
+  h+=row('MACD',(A.hist[i]>0?'Positif':'Negatif')+(A.hist[i]>A.hist[i-1]?', menguat':', melemah'),A.hist[i]>0?'up':'down');
+  h+=row('Bollinger atas',rp(A.bbU[i]));
+  h+=row('Bollinger bawah',rp(A.bbL[i]));
+  h+=row('ATR 14',`${rp(A.atr[i])} (${pc(A.atr[i]/A.c[i],1)})`);
+  h+=`</section>`;
+
+  h+=`<section><h2>Grafik 100 hari</h2><canvas id="chart"></canvas><div class="legend">Tebal: harga. Tipis: MA20, MA50. Putus: stop, target.</div></section>`;
+
+  h+=`<section><details><summary>Cara hitungnya</summary>
+    <div class="formula">Expected value = (peluang naik × untung) − (peluang turun × rugi) − biaya</div>
+    <div class="formula">t = <span class="frac"><span>rata-rata hasil bersih</span><span>simpangan baku ÷ √(sampel efektif)</span></span></div>
+    <div class="formula">Jumlah lot = <span class="frac"><span>modal × risiko per transaksi</span><span>(harga beli − stop) × 100</span></span></div>
+    <p class="read">Putusan memakai satu uji utama: uji t dua arah.</p>
+  </details></section>`;
+
+  const out=$('out'); out.innerHTML=h; out.classList.remove('hidden');
+  CUR=A; CURT='swing'; drawChart(A);
+  out.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function drawChart(A){
+  const cv=$('chart'); if(!cv) return;
+  const dpr=window.devicePixelRatio||1, w=cv.clientWidth||320, H=220;
+  cv.width=w*dpr; cv.height=H*dpr;
+  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,H);
+  const cs=getComputedStyle(document.documentElement), col=k=>cs.getPropertyValue(k).trim();
+  const N=Math.min(100,A.n), s=A.n-N, padL=6, padR=62, padT=10, padB=10;
+  let lo=Infinity, hi=-Infinity;
+  for(let i=s;i<A.n;i++){lo=Math.min(lo,A.l[i]);hi=Math.max(hi,A.h[i]);}
+  lo=Math.min(lo,A.stop); hi=Math.max(hi,A.target);
+  const x=k=>padL+k*(w-padL-padR)/(N-1), y=p=>padT+(hi-p)*(H-padT-padB)/((hi-lo)||1);
+  const line=(arr,color,wd)=>{g.beginPath();let st=false;for(let k=0;k<N;k++){const v=arr[s+k];if(v==null){continue;}if(!st){g.moveTo(x(k),y(v));st=true;}else g.lineTo(x(k),y(v));}g.strokeStyle=color;g.lineWidth=wd;g.stroke();};
+  g.setLineDash([]);
+  line(A.sma50,col('--muted'),1); line(A.sma20,col('--wait'),1); line(A.c,col('--ink'),2);
+  g.font='12px system-ui,sans-serif'; g.textBaseline='middle';
+  [[A.target,'--up','Target'],[A.stop,'--down','Stop']].forEach(([p,c,t])=>{
+    g.setLineDash([5,4]); g.strokeStyle=col(c); g.lineWidth=1; g.beginPath(); g.moveTo(padL,y(p)); g.lineTo(w-padR,y(p)); g.stroke();
+    g.setLineDash([]); g.fillStyle=col(c); g.fillText(t+' '+nf(p,0),w-padR+4,y(p));
+  });
+  g.fillStyle=col('--ink'); g.fillText(nf(A.c[A.last],0),w-padR+4,y(A.c[A.last]));
+}
+
+/* ---------- tabel input per kolom ---------- */
+const GCOLS={gSwing:['Tanggal','Buka','Tertinggi','Terendah','Tutup','Volume'],gIntra:['Tanggal','Jam','Buka','Tertinggi','Terendah','Tutup','Volume']};
+function cellsSwing(line){
+  const tok=splitLine(line); if(!tok) return null;
+  let dstr='', nums=tok;
+  if(tok.length>=8&&parseDate(tok.slice(0,3).join(' '))){dstr=tok.slice(0,3).join(' ');nums=tok.slice(3);}
+  if(!dstr&&tok.length>=6&&parseDate(tok[0])){dstr=tok[0];nums=tok.slice(1);}
+  const v=nums.slice(0,5); if(v.length<5||v.some(x=>!isFinite(parseNum(x)))) return null;
+  return [dstr,...v];
+}
+function cellsIntra(line){
+  let tok=splitLineI(line); if(!tok) return null;
+  if(tok[0].includes(' ')){const m=tok[0].match(/^(\S+)\s+(\d{1,2}[:.]\d{2}(?::\d{2})?)$/); if(m) tok=[m[1],m[2],...tok.slice(1)];}
+  let dstr='', idx=0;
+  if(parseDate(tok[0])){dstr=tok[0];idx=1;} else if(tok.length>=9&&parseDate(tok.slice(0,3).join(' '))){dstr=tok.slice(0,3).join(' ');idx=3;}
+  if(parseTime(tok[idx]||'')==null) return null;
+  const v=tok.slice(idx+1,idx+6); if(v.length<5||v.some(x=>!isFinite(parseNum(x)))) return null;
+  return [dstr,tok[idx],...v];
+}
+function rowHTML(id,i){
+  return `<tr><td class="no">${i}</td>${GCOLS[id].map((c,j)=>`<td><input data-c="${j}" aria-label="${c} baris ${i}" autocomplete="off" inputmode="${(id==='gSwing'?j===0:j<2)?'text':'decimal'}"></td>`).join('')}</tr>`;
+}
+function addRows(id,k){const tb=$(id).querySelector('tbody');let n=tb.rows.length,s='';for(let i=0;i<k;i++)s+=rowHTML(id,++n);tb.insertAdjacentHTML('beforeend',s);}
+function clearGrid(id){$(id).querySelector('tbody').innerHTML='';addRows(id,8);}
+function fillGrid(id,text,start=0){
+  const fn=id==='gSwing'?cellsSwing:cellsIntra, out=[];
+  text.split(/\r?\n/).forEach(l=>{const c=fn(l); if(c) out.push(c);});
+  const tb=$(id).querySelector('tbody'), need=start+out.length;
+  if(tb.rows.length<need) addRows(id,need-tb.rows.length);
+  out.forEach((cells,i)=>{const ins=tb.rows[start+i].querySelectorAll('input'); cells.forEach((v,j)=>{ins[j].value=v;});});
+  return out.length;
+}
+function gridText(id){
+  return [...$(id).querySelectorAll('tbody tr')].map(tr=>[...tr.querySelectorAll('input')].map(i=>i.value.trim())).filter(c=>c.some(x=>x!=='')).map(c=>c.join('\t')).join('\n');
+}
+function buildGrid(id){
+  const el=$(id);
+  el.innerHTML=`<div class="gridwrap"><table class="entry"><thead><tr><th>#</th>${GCOLS[id].map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody></tbody></table></div><div class="btns" style="margin-top:8px"><button type="button" data-add="1">Tambah baris</button><button type="button" data-add="10">Tambah 10 baris</button></div>`;
+  addRows(id,8);
+  el.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-add]'); if(b) addRows(id,+b.dataset.add);});
+  el.addEventListener('paste',e=>{
+    const t=(e.clipboardData||window.clipboardData).getData('text');
+    if(!/[\n\t]/.test(t.trim())) return;
+    e.preventDefault(); const tr=e.target.closest('tr'); fillGrid(id,t,tr?tr.rowIndex-1:0);
+  });
+  el.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'||!e.target.dataset||e.target.dataset.c==null) return;
+    e.preventDefault(); const tr=e.target.closest('tr'); if(!tr.nextElementSibling) addRows(id,1);
+    tr.nextElementSibling.querySelector(`input[data-c="${e.target.dataset.c}"]`).focus();
+  });
+}
+const kpi=items=>`<div class="kpi">${items.map(([k,v,c])=>`<div><span class="kk">${k}</span><span class="kv ${c||''}">${v}</span></div>`).join('')}</div>`;
+const warnHTML=w=>w.length?`<div class="msg warn">${w.map(x=>`<div>${x}</div>`).join('')}</div>`:'';
+
+/* ---------- aksi ---------- */
+function showMsg(t,cls){ $('msg').innerHTML=t?`<div class="msg ${cls}">${t}</div>`:''; }
+function num(id){ return parseNum($(id).value.replace(/\s/g,'')); }
+
+function runSwing(){
+  showMsg('');
+  const text=gridText('gSwing');
+  if(!text){ showMsg('Tempel data harga dulu.','err'); return; }
+  const P=parseData(text,$('urutan').value);
+  if(P.rows.length<60){ showMsg(`Data terbaca ${P.rows.length} hari. Minimal 60 hari untuk dihitung.${P.skipped?` ${P.skipped} baris dilewati karena formatnya tidak terbaca.`:''}`,'err'); return; }
+  const cfg={kode:$('kode').value.trim(),modal:num('modal'),risiko:num('risiko'),feeBeli:num('feeBeli'),feeJual:num('feeJual'),H:+$('hari').value,alpha:+$('alpha').value,entry:num('entry')||0};
+  if(!(cfg.modal>0)||!(cfg.risiko>0)||!isFinite(cfg.feeBeli)||!isFinite(cfg.feeJual)){ showMsg('Cek isian modal, risiko, dan biaya. Semuanya harus angka.','err'); return; }
+  const notes=[]; if(P.skipped) notes.push(`${P.skipped} baris dilewati karena formatnya tidak terbaca (judul kolom tidak masalah).`);
+  if(P.odd) notes.push(`${P.odd} baris punya harga tertinggi atau terendah yang tidak cocok dengan buka atau tutup. Cek ulang datanya.`);
+  if(P.note) notes.push(P.note);
+  if(notes.length) showMsg(notes.join('<br>'),'warn');
+  render(analyze(P.rows,cfg));
+}
+
+function demoSwing(){
+  let seed=20261025; const rnd=()=>{seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296;};
+  const gauss=()=>{let u=0;for(let i=0;i<6;i++)u+=rnd();return (u-3)/Math.sqrt(0.5);};
+  let p=5000, drift=0; const days=[]; const d=new Date();
+  while(days.length<220){ d.setDate(d.getDate()-1); if(d.getDay()!==0&&d.getDay()!==6) days.push(new Date(d)); }
+  days.reverse(); const out=[];
+  days.forEach(dt=>{
+    drift=0.85*drift+0.0006*gauss(); const o=p, r=drift+0.012*gauss(); const c=Math.max(100,Math.round(o*(1+r)/5)*5);
+    const hi=Math.round(Math.max(o,c)*(1+Math.abs(0.006*gauss()))/5)*5, lo=Math.round(Math.min(o,c)*(1-Math.abs(0.006*gauss()))/5)*5;
+    const vol=Math.round(1.2e6*(1+0.6*Math.abs(gauss()))*(1+8*Math.abs(r)));
+    out.push([dt,Math.round(o/5)*5,hi,lo,c,vol]); p=c;
+  });
+  const f=dt=>String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear();
+  clearGrid('gSwing'); fillGrid('gSwing',out.reverse().map(r=>[f(r[0]),r[1],r[2],r[3],r[4],r[5]].join('\t')).join('\n'));
+  showMsg('Ini data acak untuk mencoba tampilan, bukan saham sungguhan. Jangan dipakai untuk keputusan.','warn');
+}
+
+/* ================= trading harian (intraday) ================= */
+let MODE='swing', CURT='swing';
+const tickOf=p=>p<200?1:p<500?2:p<2000?5:p<5000?10:25;
+const rt=(p,dir)=>{const t=tickOf(p),q=p/t;return (dir==='down'?Math.floor(q+1e-9):dir==='up'?Math.ceil(q-1e-9):Math.round(q))*t;};
+const hh=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+function parseTime(s){const m=String(s).match(/^(\d{1,2})[:.](\d{2})(?::\d{2})?$/);if(!m)return null;const a=+m[1],b=+m[2];return a>23||b>59?null:a*60+b;}
+function nowClock(){const d=new Date();return {mins:d.getHours()*60+d.getMinutes(),dow:d.getDay()};}
+
+/* jam bursa: Senin-Kamis sesi 1 09.00-12.00, sesi 2 13.30-15.49; Jumat sesi 1 09.00-11.30, sesi 2 14.00-15.49 */
+function sesi(dow){return dow===5?{a:[540,690],b:[840,949]}:{a:[540,720],b:[810,949]};}
+function timeInfo(mins,dow){
+  if(dow===0||dow===6) return {ok:false,state:'libur',msg:'Akhir pekan, bursa tutup.'};
+  const S=sesi(dow);
+  if(mins<540) return {ok:false,state:'sebelum',msg:'Pasar belum buka. Mulai 09:00.'};
+  if(mins<555) return {ok:false,state:'awal',msg:'15 menit pertama terlalu liar. Tunggu 09:15.'};
+  if(mins<S.a[1]) return {ok:true,state:'s1',msg:'Sesi 1 berjalan.',left:(S.a[1]-mins)+(949-S.b[0])};
+  if(mins<S.b[0]) return {ok:false,state:'istirahat',msg:`Sesi istirahat sampai ${hh(S.b[0])}.`};
+  if(mins<930) return {ok:true,state:'s2',msg:'Sesi 2 berjalan.',left:949-mins};
+  if(mins<=949) return {ok:false,state:'akhir',msg:'Kurang 20 menit penutupan. Jangan buka posisi.',left:949-mins};
+  if(mins<=960) return {ok:false,state:'pra',msg:'Pra-penutupan, bukan waktu masuk.'};
+  return {ok:false,state:'tutup',msg:'Pasar sudah tutup.'};
+}
+
+/* rencana beli: area dukungan terdekat di bawah harga */
+function buildPlan(now,sup,res,zh,sg){
+  const below=sup.filter(x=>x<=now).sort((a,b)=>b-a);
+  const s=below.length?below[0]:Math.min(...sup);
+  const zl=rt(s-zh,'down'), zhi=Math.max(rt(s+zh,'up'),zl+tickOf(s));
+  const entry=zhi, stop=Math.max(rt(zl-sg,'down'),1), risk=entry-stop;
+  const up=[...new Set(res.map(x=>rt(x,'down')))].filter(x=>x>=entry+0.5*risk).sort((a,b)=>a-b);
+  const t1=up.length?up[0]:rt(entry+1.5*risk,'down');
+  let t2=up.length>1?up[1]:rt(entry+2.5*risk,'down'); if(t2<=t1) t2=rt(t1+risk,'down');
+  return {s,zl,zh:zhi,entry,stop,risk,t1,t2,rr1:(t1-entry)/risk,rr2:(t2-entry)/risk,inZone:now>=zl&&now<=zhi,above:now>zhi};
+}
+function sizePos(cfg,entry,stop,t1){
+  const perShare=entry-stop, riskAmt=cfg.modal*cfg.risiko/100;
+  let lots=perShare>0?Math.floor(riskAmt/(perShare*100)):0;
+  const maxAfford=Math.floor(cfg.modal/(entry*100*(1+cfg.feeBeli/100)));
+  const capped=lots>maxAfford; lots=Math.max(0,Math.min(lots,maxAfford));
+  const val=lots*100*entry, feeIn=val*cfg.feeBeli/100;
+  return {perShare,riskAmt,lots,capped,val,
+    maxLoss:lots*100*perShare+feeIn+lots*100*stop*cfg.feeJual/100,
+    gain1:lots*100*(t1-entry)-feeIn-lots*100*t1*cfg.feeJual/100};
+}
+
+/* ---- mode cepat: pivot dari angka kemarin dan hari ini ---- */
+function analyzeQuick(q,cfg){
+  const {pH,pL,pC,o,hi,lo,now}=q, cost=(cfg.feeBeli+cfg.feeJual)/100;
+  const PP=(pH+pL+pC)/3, R=pH-pL, S1=2*PP-pH, S2=PP-R, R1=2*PP-pL, R2=PP+R;
+  const u=Math.max(R,hi-lo,now*0.01), posDay=(now-lo)/((hi-lo)||1);
+  const score=100*(0.35*(now>PP?1:-1)+0.25*(now>o?1:-1)+0.20*(now>pC?1:-1)+0.20*(posDay>=0.7?1:posDay<=0.3?-1:0));
+  const plan=buildPlan(now,[S2,S1,PP,pC,o,lo],[PP,R1,R2,hi,pH,pC,o],0.1*u,0.15*u);
+  const size=sizePos(cfg,plan.entry,plan.stop,plan.t1);
+  const ck=cfg.jam!=null?{mins:cfg.jam,dow:nowClock().dow}:nowClock(), ti=timeInfo(ck.mins,ck.dow);
+  const move1=(plan.t1-plan.entry)/plan.entry, th=40;
+  let verdict='tunggu'; const why=[], warn=[];
+  if(score<=-th) verdict='jual';
+  else if(score>=th&&plan.inZone&&plan.rr1>=1.2&&move1>2*cost&&ti.ok) verdict='beli';
+  const ab=(now>PP)+(now>o)+(now>pC), lab=score>=th?'condong naik':score<=-th?'condong turun':'arah belum jelas';
+  why.push(`Skor cepat ${nf(score,0)}: ${lab}.`);
+  why.push(ab===3?'Harga di atas pivot, buka, dan tutup kemarin.':ab===0?'Harga di bawah pivot, buka, dan tutup kemarin.':'Sinyal campuran: sebagian di atas, sebagian di bawah.');
+  if(verdict==='jual') why.push('Tekanan jual dominan. Jangan beli sekarang.');
+  if(score>=th&&plan.above) why.push('Harga di atas rentang. Tunggu turun, jangan mengejar.');
+  if(score>=th&&plan.inZone&&plan.rr1<1.2) why.push(`Risk reward cuma 1 banding ${nf(plan.rr1,1)}: kurang menarik.`);
+  if(score>=th&&move1<=2*cost) why.push(`Target 1 ${pc(move1,2)} tipis dibanding biaya ${pc(cost,2)}.`);
+  if(!ti.ok&&verdict!=='jual') why.push(ti.msg);
+  warn.push('Mode cepat tanpa uji statistik: hanya level harga.');
+  if(ti.left!=null&&cfg.hold>ti.left) warn.push(`Tahan ${cfg.hold} menit melebihi sisa sesi (${ti.left} menit).`);
+  const levels=[['Resistance 2 (R2)',R2],['Resistance 1 (R1)',R1],['Tertinggi hari ini',hi],['Tertinggi kemarin',pH],['Pivot (PP)',PP],['Harga buka hari ini',o],['Tutup kemarin',pC],['Support 1 (S1)',S1],['Support 2 (S2)',S2],['Terendah hari ini',lo],['Terendah kemarin',pL]];
+  return {mode:'cepat',now,plan,size,verdict,conf:'terbatas',why,warn,ti,levels,score,th,cfg,cost,move1,cond:null,rows:[
+    ['Posisi dalam rentang hari ini',pc(posDay,0)],['Perubahan dari tutup kemarin',pc(now/pC-1,2,true)],['Jarak pivot ke harga',rp(now-PP)]]};
+}
+
+/* ---- parsing candle intraday ---- */
+function splitLineI(line){
+  line=line.trim(); if(!line) return null;
+  if(line.includes('\t')) return line.split('\t').map(t=>t.trim()).filter(t=>t!=='');
+  if(line.includes(';')) return line.split(';').map(t=>t.trim()).filter(t=>t!=='');
+  const cs=line.split(',').map(t=>t.trim());
+  if(cs.length===6||cs.length===7) return cs;
+  return line.split(/\s+/);
+}
+function parseIntra(text){
+  const rows=[]; let skipped=0, odd=0;
+  for(const line of text.split(/\r?\n/)){
+    let tok=splitLineI(line); if(!tok) continue;
+    if(tok[0].includes(' ')){const m=tok[0].match(/^(\S+)\s+(\d{1,2}[:.]\d{2}(?::\d{2})?)$/); if(m) tok=[m[1],m[2],...tok.slice(1)];}
+    let d=null, idx=0, dd=parseDate(tok[0]);
+    if(dd){d=dd;idx=1;} else if(tok.length>=9){dd=parseDate(tok.slice(0,3).join(' ')); if(dd){d=dd;idx=3;}}
+    const t=parseTime(tok[idx]||''); if(t==null){skipped++;continue;}
+    const v=tok.slice(idx+1,idx+6).map(parseNum);
+    if(v.length<5||v.some(x=>!isFinite(x))||v.slice(0,4).some(x=>x<=0)||v[4]<0){skipped++;continue;}
+    const [o,h,l,c,vol]=v;
+    if(h<Math.max(o,c)*0.999||l>Math.min(o,c)*1.001||h<l) odd++;
+    rows.push({d,t,o,h,l,c,v:vol});
+  }
+  if(rows.length&&rows.every(r=>r.d)) rows.sort((a,b)=>(a.d-b.d)||(a.t-b.t));
+  else if(rows.length>1&&rows[0].t>rows[rows.length-1].t) rows.reverse();
+  return {rows,skipped,odd};
+}
+
+/* ---- mode lengkap: candle intraday + uji statistik ---- */
+function analyzeIntra(rows,cfg){
+  const n=rows.length, I=cfg.interval, Hc=Math.max(1,Math.round(cfg.hold/I)), cost=(cfg.feeBeli+cfg.feeJual)/100;
+  const o=rows.map(r=>r.o),h=rows.map(r=>r.h),l=rows.map(r=>r.l),c=rows.map(r=>r.c),v=rows.map(r=>r.v);
+  const day=[]; let di=0;
+  rows.forEach((r,i)=>{ if(i>0){ const p=rows[i-1]; if(r.d&&p.d?(+r.d!==+p.d):(r.t<=p.t)) di++; } day.push(di); });
+  const vwap=[]; let cpv=0,cv=0;
+  for(let i=0;i<n;i++){ if(i>0&&day[i]!==day[i-1]){cpv=0;cv=0;} cpv+=(h[i]+l[i]+c[i])/3*v[i]; cv+=v[i]; vwap.push(cv>0?cpv/cv:c[i]); }
+  const ema9=emaArr(c,9), ema20=emaArr(c,20), rsi=rsiArr(c,14), {atr}=atrAdx(h,l,c,14);
+  const orN=Math.max(1,Math.ceil(30/I)), orH=Array(n).fill(null), orL=Array(n).fill(null);
+  let st=0;
+  for(let i=1;i<=n;i++){ if(i===n||day[i]!==day[i-1]){ if(i-st>=orN){const a=Math.max(...h.slice(st,st+orN)),b=Math.min(...l.slice(st,st+orN));for(let j=st+orN;j<i;j++){orH[j]=a;orL[j]=b;}} st=i; } }
+  const avgPrev=i=>mean(v.slice(i-20,i)), ratio3=i=>{const a=avgPrev(i);return a>0?mean(v.slice(i-2,i+1))/a:1;};
+  function scoreAt(i){
+    if(i<21||ema20[i]==null||rsi[i]==null) return null;
+    const vw=c[i]>vwap[i]?1:-1, tr=(ema9[i]>ema20[i]?1:-1)*0.5+(c[i]>ema20[i]?1:-1)*0.5;
+    const r=rsi[i], rs=r>=75?-0.5:(r<=25?0.5:(r-50)/40);
+    const orT=orH[i]==null?0:(c[i]>orH[i]?1:(c[i]<orL[i]?-1:0));
+    const vo=ratio3(i)>=1.3?Math.sign(c[i]-c[i-3]):0;
+    return 100*(0.30*vw+0.25*tr+0.15*rs+0.15*orT+0.15*vo);
+  }
+  const scores=c.map((_,i)=>scoreAt(i)), bucket=s=>s>=25?'bull':(s<=-25?'bear':'netral');
+  const last=n-1, score=scores[last];
+  if(score==null) return {error:'Data terlalu pendek untuk menghitung indikator. Butuh lebih dari 21 candle.'};
+  const bk=bucket(score), now=c[last];
+
+  /* peluang dari kondisi serupa (hanya dalam hari yang sama) */
+  const sample=[], all=[];
+  for(let i=21;i+Hc<n;i++){ if(scores[i]==null||day[i+Hc]!==day[i]) continue; const r=c[i+Hc]/c[i]-1; all.push(r); if(bucket(scores[i])===bk) sample.push(r); }
+  const ns=sample.length, nEff=Math.max(2,Math.floor(ns/Hc)); let cond=null;
+  if(ns>=3){
+    const w=sample.filter(r=>r>0), lo2=sample.filter(r=>r<=0);
+    const pUp=w.length/ns, pDn=lo2.length/ns, avgWin=w.length?mean(w):0, avgLoss=lo2.length?Math.abs(mean(lo2)):0;
+    const m=mean(sample), s=sd(sample), evGross=pUp*avgWin-pDn*avgLoss, evNet=evGross-cost, test=tTest(m-cost,s,nEff);
+    cond={ns,nEff,pUp,pDn,avgWin,avgLoss,evGross,evNet,p:test.p,sig:test.p<cfg.alpha,base:all.length?mean(all):0};
+  }
+
+  /* level hari ini dan kemarin */
+  let g0=last; while(g0>0&&day[g0-1]===day[last]) g0--;
+  const dayHigh=Math.max(...h.slice(g0)), dayLow=Math.min(...l.slice(g0)), dayOpen=o[g0];
+  let prev=null;
+  if(g0>0){ let p0=g0-1; while(p0>0&&day[p0-1]===day[g0-1]) p0--; prev={H:Math.max(...h.slice(p0,g0)),L:Math.min(...l.slice(p0,g0)),C:c[g0-1]}; }
+  else if(cfg.q) prev={H:cfg.q.pH,L:cfg.q.pL,C:cfg.q.pC};
+  let PP=null,S1=null,S2=null,R1=null,R2=null;
+  if(prev){PP=(prev.H+prev.L+prev.C)/3;const R=prev.H-prev.L;S1=2*PP-prev.H;S2=PP-R;R1=2*PP-prev.L;R2=PP+R;}
+  const A=atr[last]!=null?atr[last]:now*0.004, tk=tickOf(now);
+  const sup=[vwap[last],ema20[last],ema9[last],dayLow], res=[dayHigh];
+  if(orH[last]!=null){sup.push(orH[last]);res.push(orH[last]);}
+  if(prev){sup.push(S2,S1,PP);res.push(PP,R1,R2);}
+  const plan=buildPlan(now,sup,res,Math.max(0.5*A,tk),Math.max(A,2*tk));
+  const size=sizePos(cfg,plan.entry,plan.stop,plan.t1);
+  const lr=rows[last], dow=lr.d?lr.d.getDay():nowClock().dow, ti=timeInfo(lr.t+I,dow);
+  const move1=(plan.t1-plan.entry)/plan.entry, r3=ratio3(last);
+
+  let verdict='tunggu', pts=0; const why=[], warn=[];
+  if(bk==='bull'&&cond&&cond.evNet>0&&cond.sig&&plan.inZone&&plan.rr1>=1.2&&move1>2*cost&&ti.ok){
+    verdict='beli'; pts=1+(r3>=1?1:0)+(score>=50?1:0)+(cond.nEff>=20?1:0)+(plan.rr1>=2?1:0);
+  } else if(bk==='bear'){
+    verdict='jual'; pts=(score<=-50?1:0)+(cond&&cond.evNet<0&&cond.sig?1:0)+(r3>=1?1:0)+(c[last]<ema20[last]?1:0);
+  }
+  const conf=pts>=4?'tinggi':(pts>=2?'sedang':'rendah');
+  const lab=bk==='bull'?'condong naik':bk==='bear'?'condong turun':'arah belum jelas';
+  why.push(`Skor teknikal ${nf(score,0)}: ${lab}.`);
+  why.push(`Harga ${c[last]>vwap[last]?'di atas':'di bawah'} VWAP, RSI ${nf(rsi[last],0)}.`);
+  if(cond){
+    if(cond.sig&&cond.evNet>0) why.push(`Statistik terbukti: hasil bersih ${pc(cond.evNet,2,true)} per ${cfg.hold} menit (p ${pf(cond.p)}).`);
+    else if(cond.sig&&cond.evNet<0) why.push(`Statistik terbukti negatif: ${pc(cond.evNet,2,true)} per ${cfg.hold} menit (p ${pf(cond.p)}).`);
+    else why.push(`Statistik belum terbukti (p ${pf(cond.p)}): bisa kebetulan.`);
+  } else why.push('Kondisi serupa terlalu sedikit untuk dihitung.');
+  if(bk==='bull'&&plan.above) why.push('Harga di atas rentang. Tunggu turun, jangan mengejar.');
+  if(bk==='bull'&&plan.inZone&&plan.rr1<1.2) why.push(`Risk reward cuma 1 banding ${nf(plan.rr1,1)}: kurang menarik.`);
+  if(bk==='bull'&&move1<=2*cost) why.push(`Target 1 ${pc(move1,2)} tipis dibanding biaya ${pc(cost,2)}.`);
+  if(!ti.ok&&verdict!=='jual') why.push(ti.msg);
+
+  if(n<150) warn.push(`Candle ${n}, di bawah 150: uji lemah.`);
+  if(cond&&cond.nEff<8) warn.push(`Sampel efektif ${cond.nEff}: uji statistik lemah.`);
+  if(ti.left!=null&&cfg.hold>ti.left) warn.push(`Tahan ${cfg.hold} menit melebihi sisa sesi (${ti.left} menit).`);
+  if(cfg.alpha>0.05) warn.push('Taraf 10%: alarm palsu lebih sering.');
+
+  const levels=[['VWAP hari ini',vwap[last]],['EMA 9',ema9[last]],['EMA 20',ema20[last]],['Tertinggi hari ini',dayHigh],['Terendah hari ini',dayLow],['Harga buka hari ini',dayOpen]];
+  if(orH[last]!=null) levels.push(['Batas atas 30 menit pertama',orH[last]],['Batas bawah 30 menit pertama',orL[last]]);
+  if(prev) levels.push(['Resistance 2 (R2)',R2],['Resistance 1 (R1)',R1],['Pivot (PP)',PP],['Support 1 (S1)',S1],['Support 2 (S2)',S2]);
+  const from=Math.max(0,n-120);
+  return {mode:'lengkap',now,plan,size,verdict,conf,why,warn,ti,levels,score,th:25,cfg,cost,move1,cond,hold:cfg.hold,
+    rows:[['Volume 3 candle terakhir dibanding rata-rata',`${nf(r3,2)} kali, ${r3>=1.5?'ramai':r3>=0.8?'normal':'sepi'}`],['RSI 14',nf(rsi[last],0)],['ATR candle',`${rp(A)} (${pc(A/now,2)} dari harga)`],['Jumlah candle dan hari',`${n} candle, ${day[last]+1} hari`]],
+    chart:{c:c.slice(from),vwap:vwap.slice(from),ema20:ema20.slice(from)}};
+}
+
+/* ---- tampilan intraday ---- */
+const gaugeHTML=(score,th)=>{const pos=Math.max(0,Math.min(100,(score+100)/2)),a=(100-th)/2,b=(100+th)/2;
+  return `<div class="gauge" style="background:linear-gradient(90deg,var(--down) 0 ${a}%,var(--wait) ${a}% ${b}%,var(--up) ${b}% 100%)"><i style="left:${pos}%"></i></div><div class="gl"><span>Hindari</span><span>Tunggu</span><span>Beli</span></div>`;};
+function renderIntra(A){
+  const {cfg,plan:p,size:z,cond}=A, kode=cfg.kode?cfg.kode.toUpperCase():'saham ini';
+  const word={beli:'Beli',jual:'Hindari',tunggu:'Tunggu'}[A.verdict];
+  const sub={beli:A.mode==='cepat'?`Tanpa uji statistik, keyakinan terbatas`:`Keyakinan ${A.conf} untuk ${kode}`,jual:`Jangan beli ${kode} sekarang`,tunggu:`Belum waktunya masuk ${kode}`}[A.verdict];
+  const stat=p.inZone?`Harga sekarang ${rp(A.now)}: di dalam rentang.`:p.above?`Harga sekarang ${rp(A.now)}: di atas rentang. Tunggu turun.`:`Harga sekarang ${rp(A.now)}: di bawah rentang.`;
+  let h=`<div class="verdict ${A.verdict}">
+    <p class="word">${word}</p><p class="sub">${sub}</p>
+    <div class="zone"><span class="zl">Rentang harga beli</span><span class="zv">${rp(p.zl)} sampai ${rp(p.zh)}</span><span class="zs">${stat}</span></div>
+    ${gaugeHTML(A.score,A.th)}
+    <ul>${A.why.map(x=>`<li>${x}</li>`).join('')}</ul></div>`;
+  h+=kpi([['Stop loss',rp(p.stop),'down'],['Target 1',rp(p.t1),'up'],['Risk reward',`1 banding ${nf(p.rr1,1)}`,p.rr1>=1.2?'':'wait'],['Jumlah lot',z.lots>=1?nf(z.lots):'0']]);
+  h+=warnHTML(A.warn);
+
+  h+=`<section><h2>Rencana transaksi</h2><p class="note">Beli di dalam rentang. Cek fraksi harga di aplikasi.</p>`;
+  h+=row('Rentang beli',`${rp(p.zl)} sampai ${rp(p.zh)}`,'up');
+  h+=row('Stop loss',`${rp(p.stop)} (${pc((p.stop-p.entry)/p.entry,2)})`,'down');
+  h+=row('Target 1',`${rp(p.t1)} (${pc((p.t1-p.entry)/p.entry,2,true)})`,'up');
+  h+=row('Target 2',`${rp(p.t2)} (${pc((p.t2-p.entry)/p.entry,2,true)})`,'up');
+  h+=row('Risk reward target 1',`1 banding ${nf(p.rr1,1)}`,p.rr1>=1.2?'':'wait');
+  h+=row('Risk reward target 2',`1 banding ${nf(p.rr2,1)}`);
+  h+=row('Biaya beli dan jual',pc(A.cost,2));
+  h+=row('Untung bersih di target 1',pc(A.move1-A.cost,2,true),A.move1>A.cost?'up':'down');
+  h+=row('Risiko maksimal',rp(z.riskAmt));
+  if(z.lots>=1){
+    h+=row('Jumlah lot',nf(z.lots)+(z.capped?' (dibatasi modal)':''));
+    h+=row('Nilai posisi',rp(z.val));
+    h+=row('Rugi bila kena stop',rp(-z.maxLoss),'down');
+    h+=row('Untung bila target 1',rp(z.gain1),z.gain1>0?'up':'down');
+  } else h+=`<p class="read">Modal atau risiko terlalu kecil untuk 1 lot.</p>`;
+  h+=`</section>`;
+
+  h+=`<section><h2>Waktu bursa</h2><p class="note">Jam perdagangan sesuai aturan BEI.</p>`;
+  h+=row('Status',A.ti.msg,A.ti.ok?'up':'wait');
+  if(A.ti.left!=null) h+=row('Sisa waktu sampai 15:49',`${A.ti.left} menit`);
+  h+=row('Rencana tahan',`${cfg.hold} menit`);
+  h+=row('Senin sampai Kamis','09:00-12:00 dan 13:30-15:49');
+  h+=row('Jumat','09:00-11:30 dan 14:00-15:49');
+  h+=row('Pra-penutupan','15:50-16:00');
+  h+=`</section>`;
+
+  if(cond){
+    h+=`<section><h2>Peluang dan expected value</h2><p class="note">Kondisi serupa di masa lalu, hasil ${cfg.hold} menit kemudian.</p>`;
+    h+=row('Peluang naik',pc(cond.pUp,0),cond.pUp>0.5?'up':'down');
+    h+=row('Rata-rata untung saat naik',pc(cond.avgWin,2,true),'up');
+    h+=row('Rata-rata rugi saat turun','-'+pc(cond.avgLoss,2),'down');
+    h+=row('Expected value sebelum biaya',pc(cond.evGross,2,true));
+    h+=row('Expected value bersih',pc(cond.evNet,2,true),cond.evNet>0?'up':'down');
+    h+=row('Rata-rata semua candle (pembanding)',pc(cond.base,2,true));
+    h+=row('Jumlah kondisi serupa',`${cond.ns}, efektif ${cond.nEff}`);
+    h+=row('Uji statistik, taraf '+nf(cfg.alpha*100,0)+'%',cond.sig?`Terbukti, p ${pf(cond.p)}`:`Belum terbukti, p ${pf(cond.p)}`,cond.sig?'up':'wait');
+    h+=`</section>`;
+  }
+
+  const lv=[...A.levels.map(([k,v])=>({k,v})),{k:'Harga sekarang',v:A.now,now:1},{k:'Rentang beli, batas atas',v:p.zh,zn:1},{k:'Rentang beli, batas bawah',v:p.zl,zn:1},{k:'Stop loss',v:p.stop},{k:'Target 1',v:p.t1},{k:'Target 2',v:p.t2}].sort((a,b)=>b.v-a.v);
+  h+=`<section class="map"><h2>Peta level harga</h2><p class="note">Urut dari atas ke bawah.</p>`;
+  h+=lv.map(x=>`<div class="row${x.now?' now':''}${x.zn?' zn':''}"><span class="k">${x.k}</span><span class="v">${rp(x.v)}</span></div>`).join('');
+  h+=`</section>`;
+
+  h+=`<section><h2>Ringkasan kondisi</h2>${A.rows.map(r=>row(r[0],r[1])).join('')}</section>`;
+  if(A.chart) h+=`<section><h2>Grafik candle terakhir</h2><canvas id="chart"></canvas><div class="legend">Tebal: harga. Tipis: VWAP, EMA 20. Hijau: rentang beli.</div></section>`;
+  h+=`<section><details><summary>Cara hitungnya</summary>
+    <div class="formula">Rentang beli = dukungan terdekat ± setengah ATR</div>
+    <div class="formula">Stop = batas bawah rentang − 1 ATR</div>
+    <div class="formula">Jumlah lot = <span class="frac"><span>modal × risiko per transaksi</span><span>(harga beli − stop) × 100</span></span></div>
+    <div class="formula">Risk reward = <span class="frac"><span>target − harga beli</span><span>harga beli − stop</span></span></div>
+    <p class="read">Mode cepat memakai ± 0,1 kali rentang kemarin.</p>
+  </details></section>`;
+  const out=$('out'); out.innerHTML=h; out.classList.remove('hidden');
+  CUR=A; CURT='intra'; if(A.chart) drawIntraChart(A);
+  out.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function drawIntraChart(A){
+  const cv=$('chart'); if(!cv||!A.chart) return;
+  const dpr=window.devicePixelRatio||1, w=cv.clientWidth||320, H=220, D=A.chart, N=D.c.length, p=A.plan;
+  cv.width=w*dpr; cv.height=H*dpr;
+  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,H);
+  const cs=getComputedStyle(document.documentElement), col=k=>cs.getPropertyValue(k).trim();
+  const padL=6,padR=62,padT=10,padB=10;
+  let lo=Math.min(...D.c,p.stop,p.zl), hi=Math.max(...D.c,p.t1,p.zh);
+  const x=k=>padL+k*(w-padL-padR)/Math.max(1,N-1), y=v=>padT+(hi-v)*(H-padT-padB)/((hi-lo)||1);
+  g.globalAlpha=0.22; g.fillStyle=col('--up'); g.fillRect(padL,y(p.zh),w-padL-padR,Math.max(2,y(p.zl)-y(p.zh))); g.globalAlpha=1;
+  const line=(arr,color,wd)=>{g.beginPath();let s=false;for(let k=0;k<N;k++){const v=arr[k];if(v==null)continue;if(!s){g.moveTo(x(k),y(v));s=true;}else g.lineTo(x(k),y(v));}g.strokeStyle=color;g.lineWidth=wd;g.stroke();};
+  g.setLineDash([]); line(D.ema20,col('--muted'),1); line(D.vwap,col('--wait'),1); line(D.c,col('--ink'),2);
+  g.font='12px system-ui,sans-serif'; g.textBaseline='middle';
+  [[p.t1,'--up','T1'],[p.stop,'--down','Stop']].forEach(([v,c,t])=>{g.setLineDash([5,4]);g.strokeStyle=col(c);g.lineWidth=1;g.beginPath();g.moveTo(padL,y(v));g.lineTo(w-padR,y(v));g.stroke();g.setLineDash([]);g.fillStyle=col(c);g.fillText(t+' '+nf(v,0),w-padR+4,y(v));});
+  g.fillStyle=col('--ink'); g.fillText(nf(D.c[N-1],0),w-padR+4,y(D.c[N-1]));
+}
+
+/* ---- aksi mode intraday ---- */
+function runIntra(){
+  showMsg('');
+  const cfg={kode:$('kode').value.trim(),modal:num('modal'),risiko:num('risiko'),feeBeli:num('feeBeli'),feeJual:num('feeJual'),alpha:+$('alpha').value,interval:+$('iInterval').value,hold:+$('iHold').value};
+  if(!(cfg.modal>0)||!(cfg.risiko>0)||!isFinite(cfg.feeBeli)||!isFinite(cfg.feeJual)){ showMsg('Cek isian modal, risiko, dan biaya. Semuanya harus angka.','err'); return; }
+  const q={pH:num('pH'),pL:num('pL'),pC:num('pC'),o:num('iO'),hi:num('iH'),lo:num('iL'),now:num('iNow')};
+  const qOK=Object.values(q).every(x=>isFinite(x)&&x>0), text=gridText('gIntra');
+  const jm=$('iJam').value.trim(); cfg.jam=null;
+  if(jm){ cfg.jam=parseTime(jm); if(cfg.jam==null){ showMsg('Jam sekarang tidak terbaca. Tulis seperti 10:35.','err'); return; } }
+  if(text){
+    const P=parseIntra(text);
+    if(P.rows.length<30){ showMsg(`Candle terbaca ${P.rows.length}. Minimal 30 candle supaya indikator bisa dihitung.${P.skipped?` ${P.skipped} baris dilewati karena formatnya tidak terbaca.`:''}`,'err'); return; }
+    const notes=[]; if(P.skipped) notes.push(`${P.skipped} baris dilewati karena formatnya tidak terbaca (judul kolom tidak masalah).`);
+    if(P.odd) notes.push(`${P.odd} baris punya harga tertinggi atau terendah yang tidak cocok dengan buka atau tutup. Cek ulang datanya.`);
+    if(notes.length) showMsg(notes.join('<br>'),'warn');
+    const A=analyzeIntra(P.rows,{...cfg,q:qOK&&q.pH>=q.pL?q:null});
+    if(A.error){ showMsg(A.error,'err'); return; }
+    renderIntra(A); return;
+  }
+  if(!qOK){ showMsg('Isi ketujuh angka harga (kemarin dan hari ini), atau tempel data candle.','err'); return; }
+  if(q.pH<q.pL||q.hi<q.lo||q.now<q.lo||q.now>q.hi||q.o<q.lo||q.o>q.hi){ showMsg('Cek angka: tertinggi harus di atas terendah, dan harga buka serta harga sekarang harus berada di antara terendah dan tertinggi hari ini.','err'); return; }
+  renderIntra(analyzeQuick(q,cfg));
+}
+function demoIntra(){
+  let seed=77123; const rnd=()=>{seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296;};
+  const gauss=()=>{let u=0;for(let i=0;i<6;i++)u+=rnd();return (u-3)/Math.sqrt(0.5);};
+  const days=[]; const d=new Date();
+  while(days.length<4){ if(d.getDay()!==0&&d.getDay()!==6) days.push(new Date(d)); d.setDate(d.getDate()-1); }
+  days.reverse();
+  const slots=[]; for(let m=540;m<720;m+=5) slots.push(m); for(let m=810;m<950;m+=5) slots.push(m);
+  let p=5000, drift=0, lines=[];
+  days.forEach((dt,di)=>{
+    const f=String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear();
+    const use=di===days.length-1?slots.slice(0,30):slots;
+    use.forEach((m,k)=>{
+      drift=0.8*drift+0.0004*gauss(); const o=p, r=drift+0.0025*gauss(); const c=Math.max(100,rt(o*(1+r),'near'));
+      const hi=rt(Math.max(o,c)*(1+Math.abs(0.0015*gauss())),'up'), lo=rt(Math.min(o,c)*(1-Math.abs(0.0015*gauss())),'down');
+      const edge=1+1.5*Math.exp(-k/4)+1.2*Math.exp(-(use.length-k)/4);
+      const vol=Math.round(40000*edge*(1+0.5*Math.abs(gauss()))*(1+30*Math.abs(r)));
+      lines.push([f,hh(m),rt(o,'near'),hi,lo,c,vol].join('\t')); p=c;
+    });
+  });
+  clearGrid('gIntra'); fillGrid('gIntra',lines.join('\n')); $('candleBox').open=true;
+  showMsg('Ini data acak untuk mencoba tampilan, bukan saham sungguhan. Jangan dipakai untuk keputusan.','warn');
+}
+
+/* ---- penghubung mode ---- */
+function setMode(m){
+  MODE=m;
+  $('swingBox').classList.toggle('hidden',m!=='swing'); $('swingOpts').classList.toggle('hidden',m!=='swing'); $('intraBox').classList.toggle('hidden',m!=='intra');
+  $('tabSwing').classList.toggle('on',m==='swing'); $('tabIntra').classList.toggle('on',m==='intra');
+  $('tabSwing').setAttribute('aria-pressed',m==='swing'); $('tabIntra').setAttribute('aria-pressed',m==='intra');
+  $('out').classList.add('hidden'); $('out').innerHTML=''; CUR=null; showMsg('');
+}
+function run(){ MODE==='swing'?runSwing():runIntra(); }
+function redraw(){ if(!CUR) return; CURT==='intra'?drawIntraChart(CUR):drawChart(CUR); }
+window.addEventListener('resize',redraw);
+if(window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw);
+$('tabSwing').addEventListener('click',()=>setMode('swing'));
+$('tabIntra').addEventListener('click',()=>setMode('intra'));
+$('go').addEventListener('click',run);
+$('demo').addEventListener('click',()=>MODE==='swing'?demoSwing():demoIntra());
+$('clear').addEventListener('click',()=>{clearGrid('gSwing');clearGrid('gIntra');['pH','pL','pC','iO','iH','iL','iNow','iJam'].forEach(i=>{$(i).value='';});$('out').classList.add('hidden');$('out').innerHTML='';CUR=null;showMsg('');});
+buildGrid('gSwing'); buildGrid('gIntra');
+</script>
+</body>
+      </html>
